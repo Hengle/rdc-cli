@@ -48,7 +48,7 @@ def _recover_msys_path(path: str) -> str:
     exepath = os.environ.get("EXEPATH", "")
     if exepath:
         root = os.path.dirname(exepath).replace("\\", "/")
-        if norm.startswith(root):
+        if norm == root or norm.startswith(root + "/"):
             rest = norm[len(root) :]
             return rest or "/"
     return path

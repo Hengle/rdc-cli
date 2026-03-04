@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import shutil
 import time
 from collections.abc import Mapping
 from dataclasses import dataclass, fields
@@ -127,7 +128,17 @@ def execute_and_capture(
     if opts is None:
         opts = rd.GetDefaultCaptureOptions()
 
-    app = str(Path(app).resolve())
+    app_path = Path(app)
+    if app_path.parts == (app,):
+        # Bare executable name — try PATH lookup, keep original if not found
+        found = shutil.which(app)
+        if found:
+            app = found
+    else:
+        if not app_path.is_absolute() and workdir:
+            app_path = Path(workdir) / app_path
+        app = str(app_path.resolve())
+
     result = rd.ExecuteAndInject(app, workdir or "", args, [], output, opts, wait_for_exit)
     if result.result != 0:
         return CaptureResult(error=f"inject failed (code {result.result})")

@@ -54,6 +54,11 @@ class TestRecoverMsysPath:
         monkeypatch.setenv("EXEPATH", "D:/tools/custom-git/bin")
         assert _recover_msys_path("D:/tools/custom-git") == "/"
 
+    def test_exepath_boundary_no_false_positive(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("EXEPATH", "D:/tools/custom-git/bin")
+        # "custom-git-lfs" must NOT match "custom-git" prefix without separator
+        assert _recover_msys_path("D:/tools/custom-git-lfs/info") == "D:/tools/custom-git-lfs/info"
+
     def test_empty_string(self) -> None:
         assert _recover_msys_path("") == ""
 

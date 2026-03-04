@@ -246,38 +246,63 @@ class TestExecuteAndCapture:
 
 
 class TestExecutablePathResolution:
-    def test_relative_path_is_resolved(self) -> None:
-        from rdc.capture_core import execute_and_capture
-
+    def _cap_msg(self) -> mock_rd.TargetControlMessage:
         new_cap = mock_rd.NewCaptureData(
             path="/tmp/cap.rdc", frameNumber=0, byteSize=4096, api="Vulkan", local=True
         )
-        msg = mock_rd.TargetControlMessage(
+        return mock_rd.TargetControlMessage(
             type=mock_rd.TargetControlMessageType.NewCapture, newCapture=new_cap
         )
-        rd = _make_mock_rd(messages=[msg])
 
+    def test_relative_path_is_resolved(self) -> None:
+        from pathlib import Path
+
+        from rdc.capture_core import execute_and_capture
+
+        rd = _make_mock_rd(messages=[self._cap_msg()])
         execute_and_capture(rd, "relative/app", output="/tmp/cap.rdc")
         injected_app = rd._calls["inject"][0][0]
-        assert not injected_app.startswith("relative/")
-        assert "/" in injected_app or "\\" in injected_app
+        assert Path(injected_app).is_absolute()
+        assert Path(injected_app).name == "app"
 
     def test_absolute_path_stays_absolute(self) -> None:
         from pathlib import Path
 
         from rdc.capture_core import execute_and_capture
 
-        new_cap = mock_rd.NewCaptureData(
-            path="/tmp/cap.rdc", frameNumber=0, byteSize=4096, api="Vulkan", local=True
-        )
-        msg = mock_rd.TargetControlMessage(
-            type=mock_rd.TargetControlMessageType.NewCapture, newCapture=new_cap
-        )
-        rd = _make_mock_rd(messages=[msg])
-
+        rd = _make_mock_rd(messages=[self._cap_msg()])
         execute_and_capture(rd, "/usr/bin/app", output="/tmp/cap.rdc")
         injected_app = rd._calls["inject"][0][0]
         assert Path(injected_app).is_absolute()
+
+    def test_bare_name_uses_which(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from rdc.capture_core import execute_and_capture
+
+        monkeypatch.setattr("rdc.capture_core.shutil.which", lambda _n: "/usr/bin/myapp")
+        rd = _make_mock_rd(messages=[self._cap_msg()])
+        execute_and_capture(rd, "myapp", output="/tmp/cap.rdc")
+        injected_app = rd._calls["inject"][0][0]
+        assert injected_app == "/usr/bin/myapp"
+
+    def test_bare_name_no_which_keeps_original(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from rdc.capture_core import execute_and_capture
+
+        monkeypatch.setattr("rdc.capture_core.shutil.which", lambda _n: None)
+        rd = _make_mock_rd(messages=[self._cap_msg()])
+        execute_and_capture(rd, "myapp.exe", output="/tmp/cap.rdc")
+        injected_app = rd._calls["inject"][0][0]
+        assert injected_app == "myapp.exe"
+
+    def test_relative_path_resolved_against_workdir(self) -> None:
+        from pathlib import Path
+
+        from rdc.capture_core import execute_and_capture
+
+        rd = _make_mock_rd(messages=[self._cap_msg()])
+        execute_and_capture(rd, "bin/app", workdir="/opt/project", output="/tmp/cap.rdc")
+        injected_app = rd._calls["inject"][0][0]
+        assert Path(injected_app).is_absolute()
+        assert "opt" in injected_app or "project" in injected_app
 
 
 class TestTerminateProcess:

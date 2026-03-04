@@ -17,13 +17,21 @@ Windows VM retest on `master@491531b` (2026-03-04) found 4 issues:
 
 `rd.ExecuteAndInject()` requires an absolute path on Windows. The CLI passes `ctx.args[0]` unchanged.
 
-**Fix**: In `capture_core.py:execute_and_capture()`, resolve `app` to an absolute path via `Path(app).resolve()` before calling `ExecuteAndInject`. This is the single point through which all callers (CLI direct, split mode handler, remote) pass.
+**Fix**: In `capture_core.py:execute_and_capture()`, resolve `app` to an absolute path before calling `ExecuteAndInject`. Resolution strategy depends on the form of `app`:
+- **Bare executable name** (no directory separator, e.g. `vulkan_samples.exe`): use `shutil.which()` for PATH lookup, keeping the original name if not found.
+- **Relative path** (contains separator but not absolute, e.g. `bin/app`): resolve against `workdir` if provided, otherwise against CWD.
+- **Absolute path**: passed through unchanged.
+
+This is the single point through which all callers (CLI direct, split mode handler, remote) pass.
 
 ### BUG-1: MSYS path recovery
 
 Git Bash (MSYS2) converts any argument starting with `/` to a Windows path like `C:/Program Files/Git/...`. This happens *before* the Python process receives the argument — we cannot prevent it.
 
-**Fix**: Add a `_recover_msys_path()` helper that detects MSYS-mangled paths and strips the Windows prefix. Apply it as a Click callback on all VFS path arguments (`ls`, `cat`, `tree`). Detection heuristic: path starts with a drive letter and contains `/Program Files/Git` or matches `MSYS_SYSROOT`.
+**Fix**: Add a `_recover_msys_path()` helper invoked inside VFS command handlers (`ls`, `cat`, `tree`) that detects MSYS-mangled paths and strips the Windows prefix. Detection logic:
+1. If path already starts with `/`, return unchanged.
+2. If path matches `<drive>:/.../Git|msys64|msys32|cygwin64|cygwin/...` (regex token match), strip the matched prefix.
+3. Fallback: check `EXEPATH` env var (set by Git Bash), use its parent as root with path-separator boundary check (`norm == root or norm.startswith(root + "/")`), and strip that prefix.
 
 ### BUG-4: pytest tmp_path retention
 
