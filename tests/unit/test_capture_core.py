@@ -245,6 +245,39 @@ class TestExecuteAndCapture:
         assert result.pid == 0
 
 
+class TestExecutablePathResolution:
+    def test_relative_path_is_resolved(self) -> None:
+        from rdc.capture_core import execute_and_capture
+
+        new_cap = mock_rd.NewCaptureData(
+            path="/tmp/cap.rdc", frameNumber=0, byteSize=4096, api="Vulkan", local=True
+        )
+        msg = mock_rd.TargetControlMessage(
+            type=mock_rd.TargetControlMessageType.NewCapture, newCapture=new_cap
+        )
+        rd = _make_mock_rd(messages=[msg])
+
+        execute_and_capture(rd, "relative/app", output="/tmp/cap.rdc")
+        injected_app = rd._calls["inject"][0][0]
+        assert not injected_app.startswith("relative/")
+        assert "/" in injected_app or "\\" in injected_app
+
+    def test_absolute_path_unchanged(self) -> None:
+        from rdc.capture_core import execute_and_capture
+
+        new_cap = mock_rd.NewCaptureData(
+            path="/tmp/cap.rdc", frameNumber=0, byteSize=4096, api="Vulkan", local=True
+        )
+        msg = mock_rd.TargetControlMessage(
+            type=mock_rd.TargetControlMessageType.NewCapture, newCapture=new_cap
+        )
+        rd = _make_mock_rd(messages=[msg])
+
+        execute_and_capture(rd, "/usr/bin/app", output="/tmp/cap.rdc")
+        injected_app = rd._calls["inject"][0][0]
+        assert injected_app.endswith("/usr/bin/app")
+
+
 class TestTerminateProcess:
     @pytest.mark.skipif(
         sys.platform == "win32", reason="Unix signals: Windows uses TerminateProcess"

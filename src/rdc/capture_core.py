@@ -6,6 +6,7 @@ import logging
 import time
 from collections.abc import Mapping
 from dataclasses import dataclass, fields
+from pathlib import Path
 from typing import Any
 
 from rdc import _platform
@@ -126,6 +127,7 @@ def execute_and_capture(
     if opts is None:
         opts = rd.GetDefaultCaptureOptions()
 
+    app = str(Path(app).resolve())
     result = rd.ExecuteAndInject(app, workdir or "", args, [], output, opts, wait_for_exit)
     if result.result != 0:
         return CaptureResult(error=f"inject failed (code {result.result})")
@@ -168,7 +170,7 @@ def run_target_control_loop(
             return CaptureResult(error="target disconnected")
         msg = tc.ReceiveMessage(None)
         msg_type = int(msg.type)
-        # NewCapture = 4, Disconnected = 1
+        log.debug("target control message: type=%d", msg_type)
         if msg_type == 4 and msg.newCapture is not None:
             nc = msg.newCapture
             return CaptureResult(
