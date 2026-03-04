@@ -270,6 +270,15 @@ def close_session(*, force_shutdown: bool = False) -> tuple[bool, str]:
         logger.debug("shutdown request failed, terminating", exc_info=True)
         _platform.terminate_process(state.pid)
 
+    # Wait for daemon to exit; kill if it hangs during cleanup
+    for _ in range(20):
+        if not is_pid_alive(state.pid):
+            break
+        time.sleep(0.1)
+    else:
+        logger.debug("daemon pid %d still alive after shutdown, terminating", state.pid)
+        _platform.terminate_process(state.pid)
+
     removed = delete_session()
     if not removed:
         return False, "error: no active session"
