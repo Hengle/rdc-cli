@@ -43,6 +43,9 @@ class TestRecoverMsysPath:
     def test_strip_cygwin64(self) -> None:
         assert _recover_msys_path("C:/cygwin64/info") == "/info"
 
+    def test_strip_cygwin32(self) -> None:
+        assert _recover_msys_path("C:/cygwin32/info") == "/info"
+
     def test_non_msys_windows_path_unchanged(self) -> None:
         assert _recover_msys_path("C:/Users/Jim/file.txt") == "C:/Users/Jim/file.txt"
 

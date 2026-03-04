@@ -37,7 +37,7 @@ def _recover_msys_path(path: str) -> str:
     if not re.match(r"^[A-Za-z]:/", norm):
         return path
     m = re.match(
-        r"^[A-Za-z]:/.*?(?:Git|msys64|msys32|cygwin64|cygwin)(?=/|$)",
+        r"^[A-Za-z]:/.*?(?:Git|msys64|msys32|cygwin64|cygwin32|cygwin)(?=/|$)",
         norm,
         re.IGNORECASE,
     )
@@ -317,6 +317,7 @@ def tree_cmd(path: str, depth: int, use_json: bool) -> None:
 @click.argument("partial")
 def complete_cmd(partial: str) -> None:
     """Tab completion helper (hidden command)."""
+    partial = _recover_msys_path(partial)
     if "/" in partial:
         last_slash = partial.rfind("/")
         dir_path = partial[: last_slash + 1].rstrip("/") or "/"
