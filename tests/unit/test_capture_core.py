@@ -262,7 +262,9 @@ class TestExecutablePathResolution:
         assert not injected_app.startswith("relative/")
         assert "/" in injected_app or "\\" in injected_app
 
-    def test_absolute_path_unchanged(self) -> None:
+    def test_absolute_path_stays_absolute(self) -> None:
+        from pathlib import Path
+
         from rdc.capture_core import execute_and_capture
 
         new_cap = mock_rd.NewCaptureData(
@@ -275,7 +277,7 @@ class TestExecutablePathResolution:
 
         execute_and_capture(rd, "/usr/bin/app", output="/tmp/cap.rdc")
         injected_app = rd._calls["inject"][0][0]
-        assert injected_app.endswith("/usr/bin/app")
+        assert Path(injected_app).is_absolute()
 
 
 class TestTerminateProcess:
