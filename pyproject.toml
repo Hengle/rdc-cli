@@ -49,7 +49,6 @@ where = ["src"]
 [tool.pytest.ini_options]
 addopts = "-q"
 testpaths = ["tests"]
-tmp_path_retention_policy = "none"
 pythonpath = ["src", "tests/mocks", "tests/e2e", "scripts"]
 markers = [
   "gpu: requires real renderdoc module and GPU",

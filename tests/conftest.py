@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Generator
 from pathlib import Path
 from typing import Any
@@ -15,6 +16,9 @@ FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line("markers", "gpu: requires real renderdoc module and GPU")
+    # Windows system temp dirs can have broken ACLs; use a project-local basetemp
+    if sys.platform == "win32" and config.option.basetemp is None:
+        config.option.basetemp = str(Path(__file__).resolve().parent.parent / ".pytest_tmp")
 
 
 @pytest.fixture(scope="session")
